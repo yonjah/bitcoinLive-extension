@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head><title>Bitcoin Live options</title></head>
+<style type="text/css">
+	.hidden {
+		display: none;
+	}
+	input[type=number] {
+		width: 70px;
+	}
+	input[type=url] {
+		width: 400px;
+	}
+</style>
+<body>
+	<label><input id='mute' type='checkbox' /> Mute Audio</label>
+	<br/>
+	<br/>
+	<label><input id='httpFallBack' type='checkbox' />Use HTTP fallback (to use when socket is not working)</label>
+	<br/>
+	<br/>
+	<label><input id='notify' type='checkbox' /> Notify if Value change</label>
+	<div id="notify-options"><label>Change greater then <input id='valueChange' type='number' step='0.1'/>$</label> in <label><input id='timeInt' type='number' />seconds</label></div>
+	<br/>
+	<br/>
+	<label>Pop app chart address <input id='iframeUrl' type='url' /></label>
+	<br/>
+	<div id="status"></div>
+	<button id="save">Save</button>
+</body>
+<script src="options.js"></script>
+</html>
