@@ -5,16 +5,16 @@ var bitcoinLive = (function (){
 	"use strict";
 	var global, connect,
 		settings            = {
-			httpFallBack: true,
-			badgeProp   : "last_all",
-			avgReset    : 600,
-			timeInt     : 60000, //time int to notify change
-			valueChange : 50000, //value change in mictobitcoin 100,000 = 1USD
-			iframeUrl   : 'http://bitcoincharts.com/charts/',
-			mute        : false,
-			notify      : true
+			httpFallBack       : true,
+			badgeProp          : "last_all",
+			avgReset           : 600,
+			timeInt            : 60000, //time int to notify change
+			valueChange        : 50000, //value change in mictobitcoin 100,000 = 1USD
+			iframeUrl          : 'http://bitcoin.clarkmoody.com/widget/chart/',
+			mute               : false,
+			notificationTimeout: 5000,
+			notify             : true
 		},
-		notificationTimeout = 3000,
 		keys                = ["avg", "buy", "high", "last", "last_all", "last_local", "last_orig", "low", "sell", "vol", "vwap"],
 		average             = 0,
 		avgCount            = 0,
@@ -56,7 +56,7 @@ var bitcoinLive = (function (){
 			);
 			audio && playSound(audio);
 			notification.show();
-			setTimeout(notification.close.bind(notification), notificationTimeout);
+			setTimeout(notification.close.bind(notification), settings.notificationTimeout);
 		}
 	}
 
@@ -255,14 +255,15 @@ var bitcoinLive = (function (){
 		} else {
 			vals     = JSON.parse(vals);
 			settings = {
-				badgeProp   : "last_all",
-				avgReset    : 600,
-				httpFallBack: vals.httpFallBack,
-				timeInt     : (vals.timeInt * 1000) || settings.timeInt, //time int to notify change
-				valueChange : (vals.valueChange * 100000) || settings.valueChange, //value change in mictobitcoin 100,000 = 1btc
-				iframeUrl   : vals.iframeUrl || settings.iframeUrl,
-				mute        : vals.mute || false,
-				notify      : vals.notify === false? false : true
+				badgeProp          : "last_all",
+				avgReset           : 600,
+				httpFallBack       : vals.httpFallBack,
+				timeInt            : (vals.timeInt * 1000) || settings.timeInt, //time int to notify change
+				valueChange        : (vals.valueChange * 100000) || settings.valueChange, //value change in mictobitcoin 100,000 = 1btc
+				iframeUrl          : vals.iframeUrl || settings.iframeUrl,
+				notificationTimeout: (vals.notificationTimeout * 1000)|| settings.notificationTimeout,
+				mute               : vals.mute || false,
+				notify             : vals.notify === false? false : true
 			};
 		}
 		return this;
@@ -271,14 +272,15 @@ var bitcoinLive = (function (){
 	function saveSettings (vals){
 		if (!vals) {
 			vals = {
-				httpFallBack: settings.httpFallBack,
-				badgeProp   : settings.badgeProp,
-				avgReset    : settings.avgReset,
-				timeInt     : settings.timeInt / 1000, //time int to notify change
-				valueChange : settings.valueChange / 100000, //value change in mictobitcoin 100,000 = 1btc
-				iframeUrl   : settings.iframeUrl,
-				mute        : settings.mute,
-				notify      : settings.notify
+				httpFallBack       : settings.httpFallBack,
+				badgeProp          : settings.badgeProp,
+				avgReset           : settings.avgReset,
+				timeInt            : settings.timeInt / 1000, //time int to notify change
+				valueChange        : settings.valueChange / 100000, //value change in mictobitcoin 100,000 = 1btc
+				iframeUrl          : settings.iframeUrl,
+				notificationTimeout: settings.notificationTimeout / 1000,
+				mute               : settings.mute,
+				notify             : settings.notify
 			};
 		}
 		localStorage["bitcoinLiveOptions"] = JSON.stringify(vals);
