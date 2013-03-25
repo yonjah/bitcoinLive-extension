@@ -349,8 +349,8 @@ var bitcoinLive = (function (){
 		}
 		if (reconnect) {
 			connect.all();
-			resetHistory();
 		}
+		resetHistory();
 		return this;
 	}
 
