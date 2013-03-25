@@ -1,19 +1,26 @@
-var background = chrome.extension.getBackgroundPage(),
+var bitcoinLive = chrome.extension.getBackgroundPage().bitcoinLive,
 	notifyEl = document.getElementById('notify'),
-	notifyOptions = document.getElementById('notify-options');
+	notifyOptions = document.getElementById('notify-options'),
+	fallbackEl = document.getElementById('httpFallBack'),
+	fallbackOptions = document.getElementById('fallback-options');
 
 function saveOptions (){
 	'use strict';
 	var i, item,
-			inputs = document.getElementsByTagName("input"),
-			vals   = {};
+		inputs = document.getElementsByTagName("input"),
+		vals   = {};
 
 	for (i = 0; i < inputs.length; i += 1){
 		item = inputs.item(i);
 		vals[item.id] = item.type === 'checkbox' ? item.checked : item.value;
 	}
+	inputs = document.getElementsByTagName("select");
+	for (i = 0; i < inputs.length; i += 1){
+		item = inputs.item(i);
+		vals[item.id] = item.value;
+	}
 
-	background.bitcoinLive
+	bitcoinLive
 		.saveSettings(vals)
 		.loadSettings(vals);
 	localStorage["bitcoinLiveOptions"] = JSON.stringify(vals);
@@ -26,7 +33,8 @@ function saveOptions (){
 }
 
 function restoreOptions (){
-	var vals = localStorage["bitcoinLiveOptions"];
+	var evt,
+		vals = localStorage["bitcoinLiveOptions"];
 	if (!vals) {
 		return;
 	} else {
@@ -42,17 +50,21 @@ function restoreOptions (){
 			}
 		}
 	});
-	toggleNotification();
+	evt = document.createEvent("HTMLEvents");
+    evt.initEvent('change', true, true); // event type,bubbling,cancelable
+    notifyEl.dispatchEvent(evt);
+    fallbackEl.dispatchEvent(evt);
 }
 
-function toggleNotification (){
-	if (notifyEl.checked) {
-		notifyOptions.className = '';
+function toggleObject (obj){
+	if (this.checked) {
+		obj.className = '';
 	} else {
-		notifyOptions.className = 'hidden';
+		obj.className = 'hidden';
 	}
 }
 
 document.addEventListener('DOMContentLoaded', restoreOptions);
 document.getElementById('save').addEventListener('click', saveOptions);
-notifyEl.addEventListener('change', toggleNotification);
+notifyEl.addEventListener('change', toggleObject.bind(notifyEl, notifyOptions));
+fallbackEl.addEventListener('change', toggleObject.bind(fallbackEl, fallbackOptions));

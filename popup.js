@@ -1,4 +1,4 @@
-var background = chrome.extension.getBackgroundPage(),
+var bitcoinLive = chrome.extension.getBackgroundPage().bitcoinLive,
     frameEl = document.getElementById('graphFrame');
 
-frameEl.src = background.bitcoinLive.getSetting('iframeUrl');
+frameEl.src = bitcoinLive.getSetting('iframeUrl');

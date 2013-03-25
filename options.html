@@ -1,6 +1,9 @@
 <!doctype html>
 <html>
-<head><title>Bitcoin Live options</title></head>
+<head>
+	<meta charset="utf-8" />
+	<title>Bitcoin Live options</title>
+</head>
 <style type="text/css">
 	.hidden {
 		display: none;
@@ -13,10 +16,45 @@
 	}
 </style>
 <body>
+	<label>Currency <select id='currency'>
+		<option value='USD'>$ - USD</option>
+		<option value='AUD'>A$ - AUD</option>
+		<option value='CAD'>C$ - CAD</option>
+		<option value='CHF'>CHF - CHF</option>
+		<option value='CNY'>C¥ - CNY</option>
+		<option value='DKK'>Kr - DKK</option>
+		<option value='EUR'>€ - EUR</option>
+		<option value='GBP'>£ - GBP</option>
+		<option value='HKD'>H$ - HKD</option>
+		<option value='JPY'>J¥ - JPY</option>
+		<option value='NZD'>N$ - NZD</option>
+		<option value='PLN'>zł - PLN</option>
+		<option value='RUB'>руб - RUB</option>
+		<option value='SEK'>Kr - SEK</option>
+		<option value='SGD'>S$ - SGD</option>
+		<option value='THB'>฿ - THB</option>
+	</select></label>
+	<br/>
+	<label>Monitor value <select id='badgeProp'>
+		<option value='last_all'>Last all</option>
+		<option value='avg'>Average</option>
+		<option value='buy'>Buy</option>
+		<option value='sell'>Sell</option>
+		<option value='high'>High</option>
+		<option value='low'>Low</option>
+		<option value='last'>Last</option>
+		<option value='last_local'>Last local</option>
+		<option value='last_orig'>Last orig</option>
+	</select></label>
+	<br/>
 	<label><input id='mute' type='checkbox' /> Mute Audio</label>
 	<br/>
 	<br/>
 	<label><input id='httpFallBack' type='checkbox' />Use HTTP fallback (to use when socket is not working)</label>
+	<div id="fallback-options">
+		<label>Send request every <input id='httpWait' type='number' />seconds</label>
+		<p>* delay smaller then 10 seconds might get you blocked from accessing mtgox api</p>
+	</div>
 	<br/>
 	<br/>
 	<label><input id='notify' type='checkbox' /> Notify if Value change</label>

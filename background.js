@@ -4,8 +4,13 @@
 var bitcoinLive = (function (){
 	"use strict";
 	var global, connect,
+		version = chrome.runtime.getManifest().version,
 		settings            = {
+			version            : void 0,
+			currency           : 'USD',
+			crCode             : '$',
 			httpFallBack       : true,
+			httpWait           : 10000,
 			badgeProp          : "last_all",
 			avgReset           : 600,
 			timeInt            : 60000, //time int to notify change
@@ -15,12 +20,29 @@ var bitcoinLive = (function (){
 			notificationTimeout: 5000,
 			notify             : true
 		},
-		keys                = ["avg", "buy", "high", "last", "last_all", "last_local", "last_orig", "low", "sell", "vol", "vwap"],
+		currencies          = {
+			'USD': '$',
+			'AUD': 'A$',
+			'CAD': 'C$',
+			'CHF': 'CHF',
+			'CNY': 'C¥',
+			'DKK': 'Kr',
+			'EUR': '€',
+			'GBP': '£',
+			'HKD': 'H$',
+			'JPY': 'J¥',
+			'NZD': 'N$',
+			'PLN': 'zł',
+			'RUB': 'руб',
+			'SEK': 'Kr',
+			'SGD': 'S$',
+			'THB': '฿'
+		},
 		average             = 0,
 		avgCount            = 0,
-		webSocketUrl        = 'ws://websocket.mtgox.com/mtgox?Currency=USD',
+		webSocketUrl        = 'ws://websocket.mtgox.com/mtgox?Currency={0}',
 		socketIoUrl         = 'https://socketio.mtgox.com/mtgox',
-		httpApiUrl          = 'http://data.mtgox.com/api/1/BTCUSD/ticker',
+		httpApiUrl          = 'http://data.mtgox.com/api/1/BTC{0}/ticker',
 		history             = {startTime: (new Date()).getTime(), all: [], min:Infinity, max: 0},
 		audio               = new webkitAudioContext(),
 		audioBuffer         = {};
@@ -47,17 +69,19 @@ var bitcoinLive = (function (){
 		}
 	}
 
-	function notify (title, msg, audio, img) {
-		if (settings.notify) {
-			var notification = webkitNotifications.createNotification(
-				img || 'bitcoin-128.png',
-				title || '',
-				msg || ''
-			);
-			audio && playSound(audio);
-			notification.show();
-			setTimeout(notification.close.bind(notification), settings.notificationTimeout);
-		}
+	function notify (title, msg, audio, img, timeout) {
+		var notification = webkitNotifications.createNotification(
+			img || 'bitcoin-128.png',
+			title || '',
+			msg || ''
+		);
+		audio && playSound(audio);
+		notification.show();
+		timeout && setTimeout(notification.close.bind(notification), timeout);
+	}
+
+	function notifyVersionChange () {
+		webkitNotifications.createHTMLNotification('version-note.html').show();
 	}
 
 	function setHistory (param, time){
@@ -70,10 +94,26 @@ var bitcoinLive = (function (){
 		time = time || (new Date()).getTime();
 		if (history.max - val >= settings.valueChange) {
 			doReset = true;
-			notify('Drastic value drop', 'Current value is '+ val/100000 + '\n Record max is ' + history.max/100000, 'drop');
+			if (settings.notify) {
+				notify(
+					'Drastic value drop',
+					'Current value is '+ val/100000 + '\n Record max is ' + history.max/100000,
+					'drop',
+					'bitcoin-128.png',
+					settings.notificationTimeout
+				);
+			}
 		} else if (val - history.min >= settings.valueChange) {
 			doReset = true;
-			notify('Drastic value rise', 'Current value is '+ val/100000 + '\n Record min is ' + history.min/100000, 'raise');
+			if (settings.notify) {
+				notify(
+					'Drastic value rise',
+					'Current value is '+ val/100000 + '\n Record min is ' + history.min/100000,
+					'raise',
+					'bitcoin-128.png',
+					settings.notificationTimeout
+				);
+			}
 		}
 		if (doReset) {
 			resetHistory(val, time);
@@ -131,6 +171,10 @@ var bitcoinLive = (function (){
 		setTitle(data);
 	}
 
+	function getUrlCurrency (url, cur) {
+		return url.replace(/\{0\}/, cur);
+	}
+
 	connect = {
 		httpApiActive: true,
 		websocket: (function () {
@@ -138,13 +182,13 @@ var bitcoinLive = (function (){
 				connection,
 				timeout,
 				wait = 30000,
-				maxWait = 7200000,
+				maxWait = 1800000,
 				errorCount = 0;
 
 			function reconnect (){
 				clearTimeout(timeout);
 				console.log('reconnect in ' + wait / 1000 + ' seconds');
-				timeout = setTimeout(connect.websocket.bind(connect, currentUrl), wait);
+				timeout = setTimeout(startConnection, wait);
 				if (settings.httpFallBack) {
 					connect.httpApiActive = true;
 				}
@@ -156,6 +200,14 @@ var bitcoinLive = (function (){
 
 			function open (){
 				console.log('mtgox Connection success');
+				connection.send(JSON.stringify({
+					op: 'subscribe',
+					channel: 'ticker'
+				}));
+				connection.send(JSON.stringify({
+					op : 'mtgox.subscribe',
+					channel : 'ticker'
+				}));
 				connect.httpApiActive = false;
 				wait = 30000;
 				errorCount = 0;
@@ -175,35 +227,42 @@ var bitcoinLive = (function (){
 
 			function message (e){
 				var data = JSON.parse(e.data);
-				if (data['private'] === "ticker") {
+				if (data.private === "ticker") {
 					setData(data.ticker);
-				} else {
-					/*
-					console.log(data);
+				} else if (data.channel) {
 					connection.send(JSON.stringify({
-						"op":"mtgox.unsubscribe",
-						"channel": data['private']
+						"op":"unsubscribe",
+						"channel": data.channel
 					}));
-					*/
 				}
 			}
 
-			return function (url) {
+			function startConnection () {
 				clearTimeout(timeout);
-				currentUrl = url;
 				connection = new WebSocket(currentUrl),
 				connection.onopen = open;
 				connection.onerror = error;
 				connection.onclose = close;
 				connection.onmessage = message;
-			};
+			}
+
+			function init (url) {
+				timeout && clearTimeout(timeout);
+				currentUrl = getUrlCurrency(url, settings.currency);
+				if (connection) {
+					connection.onclose = function(){};
+					connection.close();
+				}
+				wait = 30000;
+				startConnection();
+			}
+			return init;
 		}()),
 		httpApi: (function (){
 			var currentUrl,
 				timeout,
 				lastFetch,
-				xhr,
-				wait = 15000;
+				xhr;
 
 			function readyState (){
 				if (xhr.readyState === 4) {
@@ -222,7 +281,7 @@ var bitcoinLive = (function (){
 						console.log('could not open http connection', xhr);
 					}
 					window.clearTimeout(timeout);
-					timeout = setTimeout(timeRequest, wait);
+					timeout = setTimeout(timeRequest, settings.httpWait);
 				}
 			}
 
@@ -238,33 +297,59 @@ var bitcoinLive = (function (){
 					sendRequest();
 				} else {
 					window.clearTimeout(timeout);
-					timeout = setTimeout(timeRequest, wait);
+					timeout = setTimeout(timeRequest, settings.httpWait);
 				}
 			}
-			return function (url){
-				currentUrl = url;
+			function init (url){
+				currentUrl = getUrlCurrency(url, settings.currency);
 				timeRequest();
-			};
-		}())
+			}
+			return init;
+		}()),
+
+		all: function () {
+			connect.active = true;
+			connect.websocket(webSocketUrl);
+			connect.httpApi(httpApiUrl);
+		},
+		active: false
 	};
 
 	function loadSettings (){
-		var vals = localStorage["bitcoinLiveOptions"];
+		var reconnect = false,
+			vals = localStorage["bitcoinLiveOptions"];
 		if (!vals) {
 			saveSettings();
 		} else {
-			vals     = JSON.parse(vals);
+			vals = JSON.parse(vals);
+			if (connect.active && vals.currency !== settings.currency) {
+				reconnect = true;
+			}
 			settings = {
-				badgeProp          : "last_all",
+				version            : version,
+				currency           : vals.currency || settings.currency,
+				crCode             : currencies[vals.currency || settings.currency],
+				badgeProp          : vals.badgeProp || settings.badgeProp,
 				avgReset           : 600,
-				httpFallBack       : vals.httpFallBack,
+				httpFallBack       : vals.httpFallBack === false ? false : true,
+				httpWait           : (vals.httpWait * 1000)|| settings.httpWait,
 				timeInt            : (vals.timeInt * 1000) || settings.timeInt, //time int to notify change
 				valueChange        : (vals.valueChange * 100000) || settings.valueChange, //value change in mictobitcoin 100,000 = 1btc
 				iframeUrl          : vals.iframeUrl || settings.iframeUrl,
 				notificationTimeout: (vals.notificationTimeout * 1000)|| settings.notificationTimeout,
 				mute               : vals.mute || false,
-				notify             : vals.notify === false? false : true
+				notify             : vals.notify === false ? false : true
 			};
+			if (vals.version !== version){
+				notifyVersionChange();
+				saveSettings();
+			} else if (Object.keys(vals).length !== Object.keys(settings).length) {
+				saveSettings();
+			}
+		}
+		if (reconnect) {
+			connect.all();
+			resetHistory();
 		}
 		return this;
 	}
@@ -272,7 +357,10 @@ var bitcoinLive = (function (){
 	function saveSettings (vals){
 		if (!vals) {
 			vals = {
+				currency           : settings.currency,
+				crCode             : currencies[settings.currency],
 				httpFallBack       : settings.httpFallBack,
+				httpWait           : settings.httpWait / 1000,
 				badgeProp          : settings.badgeProp,
 				avgReset           : settings.avgReset,
 				timeInt            : settings.timeInt / 1000, //time int to notify change
@@ -283,6 +371,7 @@ var bitcoinLive = (function (){
 				notify             : settings.notify
 			};
 		}
+		vals.version = version;
 		localStorage["bitcoinLiveOptions"] = JSON.stringify(vals);
 		return this;
 	}
@@ -295,14 +384,13 @@ var bitcoinLive = (function (){
 	loadSound('2bip.ogg', 'raise');
 	loadSound('3bip.ogg', 'drop');
 	loadSettings();
-	connect.websocket(webSocketUrl);
-	connect.httpApi(httpApiUrl);
+	connect.all();
 
 	global = {
-		getSetting   : getSetting,
-		saveSettings : saveSettings,
-		loadSettings : loadSettings,
-		history: history
+		getSetting  : getSetting,
+		saveSettings: saveSettings,
+		loadSettings: loadSettings,
+		history     : history
 	};
 	return global;
 }());
