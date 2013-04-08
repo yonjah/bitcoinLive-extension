@@ -13,12 +13,24 @@ var bitcoinLive = (function (){
 			httpWait           : 10000,
 			badgeProp          : "last_all",
 			avgReset           : 600,
-			timeInt            : 60000, //time int to notify change
-			valueChange        : 50000, //value change in mictobitcoin 100,000 = 1USD
-			iframeUrl          : 'http://bitcoin.clarkmoody.com/widget/chart/',
+			iframeUrl          : 'http://bitcoinity.org/markets',
 			mute               : false,
+			notify             : true,
 			notificationTimeout: 5000,
-			notify             : true
+
+			notifyTimeChange   : false,
+			timeInt            : 120000, //time int to notify change
+			timeValueChange    : 200000, //value change in microFiat 100,000 = 1 Fiat (usd, euro, etc)
+
+			notifyPrecentChange: true,
+			percentInt         : 120000, //time int to notify change
+			percentValueChange : 0.05,  //(0.01 = 1%)
+
+			notifyMax          : false,
+			maxValue           : 15000000, //max value in in microFiat.
+
+			notifyMin          : false,
+			minValue           : 14000000 //max value in in microFiat.
 		},
 		currencies          = {
 			'USD': '$',
@@ -47,6 +59,11 @@ var bitcoinLive = (function (){
 		audio               = new webkitAudioContext(),
 		audioBuffer         = {};
 
+	function formatTime(t) {
+		t = new Date(t);
+		return t.getDate() + '/' + t.getMonth() + ' ' + t.getHours()+ ':' + t.getMinutes()+ ':' + t.getSeconds();
+
+	}
 	function loadSound(url, id) {
 		var request = new XMLHttpRequest();
 		request.open('GET', url, true);
@@ -85,34 +102,67 @@ var bitcoinLive = (function (){
 	}
 
 	function setHistory (param, time){
-		var first, minMax,
+		var first, minMax, maxVal, minVal,
 			recal = false,
 			doReset = false,
 			resetTime = time - settings.timeInt,
 			val = param.value_int;
 
+		if (!val) { //we are ignoring 0 or no value since mtGox sometimes go crazy and we don't want to scare ppl :-D
+			return;
+		}
 		time = time || (new Date()).getTime();
-		if (history.max - val >= settings.valueChange) {
-			doReset = true;
-			if (settings.notify) {
+		if (settings.notify) {
+			if (settings.notifyMax && val > settings.maxValue) {
 				notify(
-					'Drastic value drop',
-					'Current value is '+ val/100000 + '\n Record max is ' + history.max/100000,
-					'drop',
-					'bitcoin-128.png',
-					settings.notificationTimeout
-				);
-			}
-		} else if (val - history.min >= settings.valueChange) {
-			doReset = true;
-			if (settings.notify) {
-				notify(
-					'Drastic value rise',
-					'Current value is '+ val/100000 + '\n Record min is ' + history.min/100000,
+					'Bitcoind Passed Max',
+					'Current value is '+ val/100000 + '\n(' + formatTime(time)+')',
 					'raise',
-					'bitcoin-128.png',
-					settings.notificationTimeout
+					'bitcoin-128.png'
 				);
+				settings.notifyMax = false;
+				saveSettings();
+			}
+
+			if (settings.notifyMin && val < settings.minValue) {
+				notify(
+					'Bitcoind Passed Min',
+					'Current value is '+ val/100000 + '\n(' + formatTime(time)+')',
+					'drop',
+					'bitcoin-128.png'
+				);
+				settings.notifyMin = false;
+				saveSettings();
+			}
+
+			if (settings.notifyTimeChange || settings.notifyPrecentChange) {
+				if (settings.notifyPrecentChange) {
+					maxVal = history.max * settings.percentValueChange;
+					minVal = history.min * settings.percentValueChange;
+				} else {
+					maxVal = settings.timeValueChange;
+					minVal = settings.timeValueChange;
+				}
+
+				if (history.max - val >= maxVal) {
+					doReset = true;
+					notify(
+						'Drastic value drop',
+						'Current value is '+ val/100000 + '\n Record max is ' + history.max/100000,
+						'drop',
+						'bitcoin-128.png',
+						settings.notificationTimeout
+					);
+				} else if (val - history.min >= minVal) {
+					doReset = true;
+					notify(
+						'Drastic value rise',
+						'Current value is '+ val/100000 + '\n Record min is ' + history.min/100000,
+						'raise',
+						'bitcoin-128.png',
+						settings.notificationTimeout
+					);
+				}
 			}
 		}
 		if (doReset) {
@@ -325,6 +375,9 @@ var bitcoinLive = (function (){
 			if (connect.active && vals.currency !== settings.currency) {
 				reconnect = true;
 			}
+			if (vals.valueChange) {
+				vals.timeValueChange = vals.valueChange;
+			}
 			settings = {
 				version            : version,
 				currency           : vals.currency || settings.currency,
@@ -333,12 +386,20 @@ var bitcoinLive = (function (){
 				avgReset           : 600,
 				httpFallBack       : vals.httpFallBack === false ? false : true,
 				httpWait           : (vals.httpWait * 1000)|| settings.httpWait,
-				timeInt            : (vals.timeInt * 1000) || settings.timeInt, //time int to notify change
-				valueChange        : (vals.valueChange * 100000) || settings.valueChange, //value change in mictobitcoin 100,000 = 1btc
 				iframeUrl          : vals.iframeUrl || settings.iframeUrl,
 				notificationTimeout: (vals.notificationTimeout * 1000)|| settings.notificationTimeout,
 				mute               : vals.mute || false,
-				notify             : vals.notify === false ? false : true
+				notify             : vals.notify !== void 0 ? vals.notify : settings.notify,
+				notifyTimeChange   : vals.notifyTimeChange !== void 0 ? vals.notifyTimeChange : settings.notifyTimeChange,
+				timeInt            : (vals.timeInt * 1000) || settings.timeInt, //time int to notify change
+				timeValueChange    : (vals.timeValueChange * 100000) || settings.timeValueChange, //value change in mictobitcoin 100,000 = 1btc
+				notifyPrecentChange: vals.notifyPrecentChange !== void 0 ? vals.notifyPrecentChange : settings.notifyPrecentChange,
+				percentInt         : (vals.percentInt * 1000) || settings.percentInt,
+				percentValueChange : (vals.percentValueChange / 100) || settings.percentValueChange,
+				notifyMax          : vals.notifyMax !== void 0 ? vals.notifyMax : settings.notifyMax,
+				maxValue           : (vals.maxValue * 100000) || settings.maxValue,
+				notifyMin          : vals.notifyMin !== void 0 ? vals.notifyMin : settings.notifyMin,
+				minValue           : (vals.minValue * 100000) || settings.minValue
 			};
 			if (vals.version !== version){
 				notifyVersionChange();
@@ -363,12 +424,20 @@ var bitcoinLive = (function (){
 				httpWait           : settings.httpWait / 1000,
 				badgeProp          : settings.badgeProp,
 				avgReset           : settings.avgReset,
-				timeInt            : settings.timeInt / 1000, //time int to notify change
-				valueChange        : settings.valueChange / 100000, //value change in mictobitcoin 100,000 = 1btc
 				iframeUrl          : settings.iframeUrl,
 				notificationTimeout: settings.notificationTimeout / 1000,
 				mute               : settings.mute,
-				notify             : settings.notify
+				notify             : settings.notify,
+				notifyTimeChange   : settings.notifyTimeChange,
+				timeInt            : settings.timeInt / 1000, //time int to notify change
+				timeValueChange    : settings.timeValueChange / 100000, //value change in mictobitcoin 100,000 = 1btc
+				notifyPrecentChange: settings.notifyPrecentChange,
+				percentInt         : settings.percentInt / 1000,
+				percentValueChange : settings.percentValueChange * 100,
+				notifyMax          : settings.notifyMax,
+				maxValue           : settings.maxValue  / 100000,
+				notifyMin          : settings.notifyMin,
+				minValue           : settings.minValue / 100000
 			};
 		}
 		vals.version = version;

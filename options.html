@@ -4,71 +4,168 @@
 	<meta charset="utf-8" />
 	<title>Bitcoin Live options</title>
 </head>
-<style type="text/css">
-	.hidden {
-		display: none;
-	}
-	input[type=number] {
-		width: 70px;
-	}
-	input[type=url] {
-		width: 400px;
-	}
-</style>
+	<style type="text/css">
+		/*
+		*
+		*	CSSG Collections: Forms
+		*	designed and coded by Alen Grakalic (http://cssglobe.com)
+		*	brought to you by Templatica (http://templatica.com)
+		*
+		*/
+
+		body{
+			background:#f8f8f8;
+			font:13px Trebuchet MS, Arial, Helvetica, Sans-Serif;
+			color:#333;
+			line-height:160%;
+			margin:0;
+			padding:0;
+			text-align:center;
+		}
+		h1{
+			font-size:200%;
+			font-weight:normal;
+		}
+		h2, h3, h4, h5, h6{
+			font-weight:normal;
+			margin:1em 0;
+		}
+		a{
+			text-decoration:none;
+			color:#f30;
+		}
+		a:hover{
+			color:#999;
+		}
+		table, input, textarea, select, li{
+			font:100% Trebuchet MS, Arial, Helvetica, Sans-Serif;
+			line-height:160%;
+			color:#333;
+		}
+		blockquote, ul, ol, form{
+			margin:1em 0;
+		}
+		li{
+			display:list-item;
+			}
+		body {
+			margin:0 auto;
+			background:#fff;
+			padding:20px 40px;
+			text-align:left;
+			padding:1.5em 1em;
+			color:#246878;
+			background:#fbfaf4;
+		}
+		fieldset{
+			vertical-align: top;
+			display: inline-block;
+			min-height: 300px;
+			width: 500px;
+			margin:0;
+			padding: 0 0 0 1em;
+			border: 1px solid #246878;
+		}
+		legend{margin-left:50px;}
+		input,  textarea{
+			width:302px;
+			border:1px solid #dfdfdf;
+			background:#fff;
+			padding:5px 3px;
+			}
+		textarea{
+			height:125px;
+			overflow:auto;
+			}
+		button{
+			cursor:pointer;
+			text-align:left;
+			}
+		/*bitcoin live style*/
+		p {
+			margin: -0.4em 0 0;
+		}
+		.hidden {
+			display: none;
+		}
+		input[type=checkbox],
+		input[type=radio] {
+			width: auto;
+		}
+		input[type=number] {
+			width: 70px;
+		}
+		input[type=url] {
+			width: 400px;
+		}
+		#reset {
+			opacity: 0.5;
+		}
+	</style>
 <body>
-	<label>Currency <select id='currency'>
-		<option value='USD'>$ - USD</option>
-		<option value='AUD'>A$ - AUD</option>
-		<option value='CAD'>C$ - CAD</option>
-		<option value='CHF'>CHF - CHF</option>
-		<option value='CNY'>C¥ - CNY</option>
-		<option value='DKK'>Kr - DKK</option>
-		<option value='EUR'>€ - EUR</option>
-		<option value='GBP'>£ - GBP</option>
-		<option value='HKD'>H$ - HKD</option>
-		<option value='JPY'>J¥ - JPY</option>
-		<option value='NZD'>N$ - NZD</option>
-		<option value='PLN'>zł - PLN</option>
-		<option value='RUB'>руб - RUB</option>
-		<option value='SEK'>Kr - SEK</option>
-		<option value='SGD'>S$ - SGD</option>
-		<option value='THB'>฿ - THB</option>
-	</select></label>
-	<br/>
-	<label>Monitor value <select id='badgeProp'>
-		<option value='last_all'>Last all</option>
-		<option value='avg'>Average</option>
-		<option value='buy'>Buy</option>
-		<option value='sell'>Sell</option>
-		<option value='high'>High</option>
-		<option value='low'>Low</option>
-		<option value='last'>Last</option>
-		<option value='last_local'>Last local</option>
-		<option value='last_orig'>Last orig</option>
-	</select></label>
-	<br/>
-	<label><input id='mute' type='checkbox' /> Mute Audio</label>
-	<br/>
-	<br/>
-	<label><input id='httpFallBack' type='checkbox' />Use HTTP fallback (to use when socket is not working)</label>
-	<div id="fallback-options">
-		<label>Send request every <input id='httpWait' type='number' />seconds</label>
-		<p>* delay smaller then 10 seconds might get you blocked from accessing mtgox api</p>
-	</div>
-	<br/>
-	<br/>
-	<label><input id='notify' type='checkbox' /> Notify if Value change</label>
-	<div id="notify-options">
-		<label>Change greater then <input id='valueChange' type='number' step='0.1'/>$</label> in <label><input id='timeInt' type='number' />seconds</label>
+	<form>
+		<fieldset>
+			<legend>General</legend>
+			<label>Currency <select id='currency'>
+				<option value='USD'>$ - USD</option>
+				<option value='AUD'>A$ - AUD</option>
+				<option value='CAD'>C$ - CAD</option>
+				<option value='CHF'>CHF - CHF</option>
+				<option value='CNY'>C¥ - CNY</option>
+				<option value='DKK'>Kr - DKK</option>
+				<option value='EUR'>€ - EUR</option>
+				<option value='GBP'>£ - GBP</option>
+				<option value='HKD'>H$ - HKD</option>
+				<option value='JPY'>J¥ - JPY</option>
+				<option value='NZD'>N$ - NZD</option>
+				<option value='PLN'>zł - PLN</option>
+				<option value='RUB'>руб - RUB</option>
+				<option value='SEK'>Kr - SEK</option>
+				<option value='SGD'>S$ - SGD</option>
+				<option value='THB'>฿ - THB</option>
+			</select></label>
+			<br/>
+			<label>Monitor value <select id='badgeProp'>
+				<option value='last_all'>Last all</option>
+				<option value='avg'>Average</option>
+				<option value='buy'>Buy</option>
+				<option value='sell'>Sell</option>
+				<option value='high'>High</option>
+				<option value='low'>Low</option>
+				<option value='last'>Last</option>
+				<option value='last_local'>Last local</option>
+				<option value='last_orig'>Last orig</option>
+			</select></label>
+			<br/>
+			<label><input id='mute' type='checkbox' /> Mute Audio</label><br/>
+		</fieldset>
+		<fieldset>
+			<legend>Notifications</legend>
+			<label><input id='notify' type='checkbox' />Allow Notifications</label>
+			<div id="notify-options">
+				<label>Close Notification window after <input min="0" id='notificationTimeout' type='number'/> seconds</label><br/>
+				<label><input id='notifyPrecentChange' type='radio' name='time'/></label> <label>Change greater than <input min="0" max="100" id='percentValueChange' type='number' step='0.01'/>%</label> in <label><input min="0" id='percentInt' type='number' />seconds</label><br/>
+				<label><input id='notifyTimeChange' type='radio' name='time' /></label> <label>Change greater than <input id='timeValueChange' min="0" type='number' step='0.1'/>$</label> in <label><input min="0" id='timeInt' type='number' />seconds</label><br/>
+				<label><input id='notifyMax' type='checkbox' /></label> <label>Value greater than <input id='maxValue' min="0" type='number' step='1'/>$</label><br/><p>*You will need to reactivate this setting after the notification</p>
+				<label><input id='notifyMin' type='checkbox' /></label> <label>Value smaller than <input id='minValue' min="0" type='number' step='1'/>$</label><br/><p>*You will need to reactivate this setting after the notification</p>
+			</div>
+		</fieldset>
+		<fieldset>
+			<legend>HTTP fallback</legend>
+			<label><input id='httpFallBack' type='checkbox' />Use HTTP fallback (to use when socket is not working)</label>
+			<div id="fallback-options">
+				<label>Send request every <input id='httpWait' type='number' />seconds</label>
+				<p>*delay smaller than 10 seconds might get you blocked from accessing mtgox api</p>
+			</div>
+		</fieldset>
 		<br/>
-		<label>Close Notification window after <input id='notificationTimeout' type='number'/> seconds</label>
-	</div>
-	<br/>
-	<br/>
-	<label>Pop app chart address <input id='iframeUrl' type='url' /></label>
-	<br/>
-	<div id="status"></div>
-	<button id="save">Save</button>
+		<br/>
+		<label>Pop app chart address <input id='iframeUrl' type='url' /></label>
+		<br/>
+		<div id="status"></div>
+		<button id="reset">Reset</button>
+		<button id="save">Save</button>
+	</form>
 </body>
 <script src="options.js"></script>
 </html>

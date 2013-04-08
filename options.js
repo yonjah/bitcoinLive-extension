@@ -12,7 +12,7 @@ function saveOptions (){
 
 	for (i = 0; i < inputs.length; i += 1){
 		item = inputs.item(i);
-		vals[item.id] = item.type === 'checkbox' ? item.checked : item.value;
+		vals[item.id] = (item.type === 'checkbox' || item.type === 'radio') ? item.checked : item.value;
 	}
 	inputs = document.getElementsByTagName("select");
 	for (i = 0; i < inputs.length; i += 1){
@@ -43,7 +43,7 @@ function restoreOptions (){
 	Object.keys(vals).forEach(function(key){
 		var el = document.getElementById(key);
 		if (el) {
-			if (el.type === 'checkbox') {
+			if (el.type === 'checkbox' || el.type === 'radio') {
 				el.checked = vals[key];
 			} else {
 				el.value = vals[key];
