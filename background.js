@@ -7,11 +7,12 @@ var bitcoinLive = (function (){
 		version = chrome.runtime.getManifest().version,
 		settings            = {
 			version            : void 0,
+			tracker            : 'mtGox',
 			currency           : 'USD',
 			crCode             : '$',
 			httpFallBack       : true,
 			httpWait           : 10000,
-			badgeProp          : "last_all",
+			badgeProp          : "last",
 			avgReset           : 600,
 			iframeUrl          : 'http://bitcoinity.org/markets',
 			mute               : false,
@@ -40,6 +41,7 @@ var bitcoinLive = (function (){
 			'CNY': 'C¥',
 			'DKK': 'Kr',
 			'EUR': '€',
+			'ILS': '₪',
 			'GBP': '£',
 			'HKD': 'H$',
 			'JPY': 'J¥',
@@ -48,16 +50,113 @@ var bitcoinLive = (function (){
 			'RUB': 'руб',
 			'SEK': 'Kr',
 			'SGD': 'S$',
-			'THB': '฿'
+			'THB': '฿',
+			'BRL': 'R$',
+			'CZK': 'Kč',
+			'NOK': 'kr',
+			'ZAR': 'R'
+
 		},
 		average             = 0,
 		avgCount            = 0,
-		webSocketUrl        = 'ws://websocket.mtgox.com/mtgox?Currency={0}',
-		socketIoUrl         = 'https://socketio.mtgox.com/mtgox',
-		httpApiUrl          = 'http://data.mtgox.com/api/1/BTC{0}/ticker',
+		api                 = {
+			btcAverage: {
+				httpApiUrl        : 'https://api.bitcoinaverage.com/ticker/{0}',
+				optionalProps     : ['last', '24h_avg', 'ask', 'bid'],
+				httpWait         : 60 *1000,
+				optionalCurrencies: ['USD', 'EUR', 'CNY', 'ILS', 'AUD', 'BRL', 'CAD', 'CZK','GBP', 'JPY', 'NOK', 'NZD', 'PLN', 'RUB', 'SEK', 'SGD',  'ZAR'],
+				parseDataFunc     : function (data) {
+					if (data[settings.badgeProp]) {
+						data.sell = {
+							value  : '' + data.ask,
+							display: settings.crCode + data.ask
+						};
+						data.buy = {
+							value  : '' + data.bid,
+							display: settings.crCode + data.bid
+						};
+						if (settings.badgeProp !== 'ask' && settings.badgeProp !== 'bid') {
+							data[settings.badgeProp] = {
+								value  : '' + data[settings.badgeProp],
+								display: settings.crCode + data[settings.badgeProp]
+							};
+						}
+						data.now = (new Date()).getTime();
+						return data;
+					}
+				}
+			},
+			btcAverageNoGox: {
+				httpApiUrl        : 'https://api.bitcoinaverage.com/no-mtgox/ticker/{0}',
+				optionalProps     : ['last', '24h_avg', 'ask', 'bid'],
+				httpWait         : 60 *1000,
+				optionalCurrencies: ['USD', 'EUR', 'CNY', 'ILS', 'AUD', 'BRL', 'CAD', 'CZK','GBP', 'JPY', 'NOK', 'NZD', 'PLN', 'RUB', 'SEK', 'SGD',  'ZAR'],
+				parseDataFunc     : function (data) {
+					if (data[settings.badgeProp]) {
+						data.sell = {
+							value  : '' + data.ask,
+							display: settings.crCode + data.ask
+						};
+						data.buy = {
+							value  : '' + data.bid,
+							display: settings.crCode + data.bid
+						};
+						if (settings.badgeProp !== 'ask' && settings.badgeProp !== 'bid') {
+							data[settings.badgeProp] = {
+								value  : '' + data[settings.badgeProp],
+								display: settings.crCode + data[settings.badgeProp]
+							};
+						}
+						data.now = (new Date()).getTime();
+						return data;
+					}
+				}
+			},
+			mtGox: {
+				webSocketUrl      : 'ws://websocket.mtgox.com/mtgox?Currency={0}',
+				socketIoUrl       : 'https://socketio.mtgox.com/mtgox',
+				httpApiUrl        : 'http://data.mtgox.com/api/1/BTC{0}/ticker',
+				optionalProps     : ['last_all', 'avg', 'buy', 'sell', 'high', 'low', 'last', 'last_local', 'last_orig'],
+				optionalCurrencies: ['USD', 'AUD', 'CAD', 'CHF', 'CNY', 'DKK', 'EUR', 'GBP', 'HKD', 'JPY', 'NZD', 'PLN', 'RUB', 'SEK', 'SGD', 'THB'],
+				httpWait          : 10 * 1000,
+				parseDataFunc     : function (data) {
+					if (data.result === "success") {
+						data['return'].now = window.parseInt(data['return'].now / 1000, 10);
+						return data['return'];
+					}
+				}
+			}
+		},
 		history             = {startTime: (new Date()).getTime(), all: [], min:Infinity, max: 0},
 		audio               = new webkitAudioContext(),
-		audioBuffer         = {};
+		audioBuffer         = {},
+		notID               = 1,
+		emptyFunction       = function(){};
+
+
+	function createNotification(data, timeout) {
+		var id = (notID += 1),
+			options = {
+				type : data.type || data.image ? "image" : "basic",
+				title: data.title,
+				expandedMessage: data.expandedMessage,
+				message: data.message
+			};
+
+		if (options.type == 'image') {
+			options.imageUrl = chrome.runtime.getURL(data.image);
+		}
+		options.iconUrl = chrome.runtime.getURL('bitcoin-128.png');
+		options.priority = 0;
+		options.buttons = [];
+		if (data.buttons) {
+			options.buttons = data.buttons.map(function (text) { return {title: text};});
+		}
+		chrome.notifications.create("id"+id, options, emptyFunction);
+		timeout && setTimeout(function () {
+			chrome.notifications.clear("id"+id, emptyFunction);
+		}, timeout);
+	}
 
 	function formatTime(t) {
 		t = new Date(t);
@@ -78,7 +177,7 @@ var bitcoinLive = (function (){
 	}
 
 	function playSound(id) {
-		if (!settings.mute) {
+		if (!settings.mute && audioBuffer[id]) {
 			var source = audio.createBufferSource(); // creates a sound source
 			source.buffer = audioBuffer[id];                    // tell the source which sound to play
 			source.connect(audio.destination);       // connect the source to the context's destination (the speakers)
@@ -87,18 +186,16 @@ var bitcoinLive = (function (){
 	}
 
 	function notify (title, msg, audio, img, timeout) {
-		var notification = webkitNotifications.createNotification(
-			img || 'bitcoin-128.png',
-			title || '',
-			msg || ''
-		);
 		audio && playSound(audio);
-		notification.show();
-		timeout && setTimeout(notification.close.bind(notification), timeout);
+		createNotification({ title: title, image: img, message: msg}, timeout);
 	}
 
 	function notifyVersionChange () {
-		webkitNotifications.createHTMLNotification('version-note.html').show();
+		createNotification({
+			title: 'New Version',
+			message: settings.version + '\n Check the extension options to see whats new',
+			buttons: ['ChangeLog']
+		});
 	}
 
 	function setHistory (param, time){
@@ -249,7 +346,7 @@ var bitcoinLive = (function (){
 			}
 
 			function open (){
-				console.log('mtgox Connection success');
+				console.log('socket Connection success');
 				connection.send(JSON.stringify({
 					op: 'subscribe',
 					channel: 'ticker'
@@ -296,21 +393,29 @@ var bitcoinLive = (function (){
 				connection.onmessage = message;
 			}
 
-			function init (url) {
-				timeout && clearTimeout(timeout);
-				currentUrl = getUrlCurrency(url, settings.currency);
+			function disconnect (url) {
 				if (connection) {
 					connection.onclose = function(){};
 					connection.close();
 				}
+			}
+
+			function init (url) {
+				timeout && clearTimeout(timeout);
 				wait = 30000;
-				startConnection();
+				disconnect();
+				if (url) {
+					currentUrl = getUrlCurrency(url, settings.currency);
+					startConnection();
+				}
 			}
 			return init;
 		}()),
 		httpApi: (function (){
 			var currentUrl,
+			    parseDataFunc,
 				timeout,
+				reqDelay,
 				lastFetch,
 				xhr;
 
@@ -318,20 +423,20 @@ var bitcoinLive = (function (){
 				if (xhr.readyState === 4) {
 					if (xhr.status === 200) {
 						var data = JSON.parse(xhr.responseText);
-						if (data.result === "success") {
-							data = data['return'];
+						data = parseDataFunc(data);
+						if (data) {
 							if (lastFetch !== data.now) {
 								lastFetch = data.now;
-								setData(data, window.parseInt(data.now / 1000, 10));
+								setData(data, data.now);
 							}
 						} else {
-							console.log('mtgox api error', data);
+							console.log('http api error', data);
 						}
 					} else {
 						console.log('could not open http connection', xhr);
 					}
 					window.clearTimeout(timeout);
-					timeout = setTimeout(timeRequest, settings.httpWait);
+					timeout = setTimeout(timeRequest, reqDelay);
 				}
 			}
 
@@ -347,20 +452,40 @@ var bitcoinLive = (function (){
 					sendRequest();
 				} else {
 					window.clearTimeout(timeout);
-					timeout = setTimeout(timeRequest, settings.httpWait);
+					timeout = setTimeout(timeRequest, reqDelay);
 				}
 			}
-			function init (url){
-				currentUrl = getUrlCurrency(url, settings.currency);
-				timeRequest();
+			function init (url, delay, parser){
+				window.clearTimeout(timeout);
+				connect.httpApiActive = false;
+				if (url) {
+					connect.httpApiActive = true;
+					currentUrl = getUrlCurrency(url, settings.currency);
+					reqDelay = window.Math.max(delay, settings.httpWait);
+					parseDataFunc = parser;
+					timeRequest();
+				}
 			}
 			return init;
 		}()),
 
+		disconnect: function () {
+			connect.websocket();
+			connect.httpApi();
+			connect.active = false;
+		},
+
 		all: function () {
+			var trackerApi = api[settings.tracker];
+			if (connect.active) {
+				connect.disconnect();
+			}
 			connect.active = true;
-			connect.websocket(webSocketUrl);
-			connect.httpApi(httpApiUrl);
+			if (trackerApi.webSocketUrl) {
+				connect.websocket(trackerApi.webSocketUrl);
+			} if (trackerApi.httpApiUrl) {
+				connect.httpApi(trackerApi.httpApiUrl, trackerApi.httpWait, trackerApi.parseDataFunc);
+			}
 		},
 		active: false
 	};
@@ -372,7 +497,7 @@ var bitcoinLive = (function (){
 			saveSettings();
 		} else {
 			vals = JSON.parse(vals);
-			if (connect.active && vals.currency !== settings.currency) {
+			if (connect.active && (vals.currency !== settings.currency || vals.tracker !== settings.tracker)) {
 				reconnect = true;
 			}
 			if (vals.valueChange) {
@@ -383,6 +508,7 @@ var bitcoinLive = (function (){
 				currency           : vals.currency || settings.currency,
 				crCode             : currencies[vals.currency || settings.currency],
 				badgeProp          : vals.badgeProp || settings.badgeProp,
+				tracker            : vals.tracker || settings.tracker,
 				avgReset           : 600,
 				httpFallBack       : vals.httpFallBack === false ? false : true,
 				httpWait           : (vals.httpWait * 1000)|| settings.httpWait,
@@ -423,6 +549,7 @@ var bitcoinLive = (function (){
 				httpFallBack       : settings.httpFallBack,
 				httpWait           : settings.httpWait / 1000,
 				badgeProp          : settings.badgeProp,
+				tracker            : settings.tracker,
 				avgReset           : settings.avgReset,
 				iframeUrl          : settings.iframeUrl,
 				notificationTimeout: settings.notificationTimeout / 1000,
@@ -449,14 +576,20 @@ var bitcoinLive = (function (){
 		return settings[key];
 	}
 
+	function getApi (key) {
+		return api[key];
+	}
 
 	loadSound('2bip.ogg', 'raise');
 	loadSound('3bip.ogg', 'drop');
 	loadSettings();
+	saveSettings();
 	connect.all();
 
 	global = {
+		currencies  : currencies,
 		getSetting  : getSetting,
+		getApi      : getApi,
 		saveSettings: saveSettings,
 		loadSettings: loadSettings,
 		history     : history
