@@ -3,7 +3,7 @@
 
   "name": "Bitcoin Live",
   "description": "Get live notifications for bitcoin value",
-  "version": "0.2.0.1",
+  "version": "0.2.1",
   "icons": {
     "16": "bitcoin-16.png",
     "48": "bitcoin-48.png",
