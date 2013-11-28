@@ -27,6 +27,8 @@ var bitcoinLive = (function (){
 			percentInt         : 120000, //time int to notify change
 			percentValueChange : 0.05,  //(0.01 = 1%)
 
+			valueDivider       : 1, //if we want to see value in miliBit microBit or any other divider.
+
 			notifyMax          : false,
 			maxValue           : 15000000, //max value in in microFiat.
 
@@ -69,15 +71,18 @@ var bitcoinLive = (function (){
 					if (data[settings.badgeProp]) {
 						data.sell = {
 							value  : '' + data.ask,
+							value_int: '' + window.parseInt(data.ask * 100000, 10),
 							display: settings.crCode + data.ask
 						};
 						data.buy = {
 							value  : '' + data.bid,
+							value_int: '' + window.parseInt(data.bid * 100000, 10),
 							display: settings.crCode + data.bid
 						};
 						if (settings.badgeProp !== 'ask' && settings.badgeProp !== 'bid') {
 							data[settings.badgeProp] = {
 								value  : '' + data[settings.badgeProp],
+								value_int: '' + window.parseInt(data[settings.badgeProp] * 100000, 10),
 								display: settings.crCode + data[settings.badgeProp]
 							};
 						}
@@ -95,15 +100,18 @@ var bitcoinLive = (function (){
 					if (data[settings.badgeProp]) {
 						data.sell = {
 							value  : '' + data.ask,
+							value_int: '' + (data.ask * 100000),
 							display: settings.crCode + data.ask
 						};
 						data.buy = {
 							value  : '' + data.bid,
+							value_int: '' + (data.bid * 100000),
 							display: settings.crCode + data.bid
 						};
 						if (settings.badgeProp !== 'ask' && settings.badgeProp !== 'bid') {
 							data[settings.badgeProp] = {
 								value  : '' + data[settings.badgeProp],
+								value_int: '' + (data[settings.badgeProp] * 100000),
 								display: settings.crCode + data[settings.badgeProp]
 							};
 						}
@@ -198,6 +206,10 @@ var bitcoinLive = (function (){
 		});
 	}
 
+	function parseHistoryVal (val) {
+		return Math.round(val / (settings.valueDivider * 1000)) / 100;
+	}
+
 	function setHistory (param, time){
 		var first, minMax, maxVal, minVal,
 			recal = false,
@@ -245,7 +257,7 @@ var bitcoinLive = (function (){
 					doReset = true;
 					notify(
 						'Drastic value drop',
-						'Current value is '+ val/100000 + '\n Record max is ' + history.max/100000,
+						'Current value is '+ parseHistoryVal(val) + '\n Record max is ' + parseHistoryVal(history.max),
 						'drop',
 						'bitcoin-128.png',
 						settings.notificationTimeout
@@ -254,7 +266,7 @@ var bitcoinLive = (function (){
 					doReset = true;
 					notify(
 						'Drastic value rise',
-						'Current value is '+ val/100000 + '\n Record min is ' + history.min/100000,
+						'Current value is '+ parseHistoryVal(val) + '\n Record min is ' + parseHistoryVal(history.min),
 						'raise',
 						'bitcoin-128.png',
 						settings.notificationTimeout
@@ -295,7 +307,7 @@ var bitcoinLive = (function (){
 		var value = param.value,
 			value_int = param.value_int;
 
-		chrome.browserAction.setBadgeText({text: value});
+		chrome.browserAction.setBadgeText({text: (value/ settings.valueDivider).toString() });
 		chrome.browserAction.setBadgeBackgroundColor({color: value_int >= average ? '#0A0' : '#A00'});
 
 		if (avgCount >= settings.avgReset) {
@@ -500,6 +512,9 @@ var bitcoinLive = (function (){
 			if (connect.active && (vals.currency !== settings.currency || vals.tracker !== settings.tracker)) {
 				reconnect = true;
 			}
+			if (vals.valueDivider !== settings.valueDivider) {
+				reconnect = true; //we reconnect just to trigger immidiate value change;
+			}
 			if (vals.valueChange) {
 				vals.timeValueChange = vals.valueChange;
 			}
@@ -522,6 +537,7 @@ var bitcoinLive = (function (){
 				notifyPrecentChange: vals.notifyPrecentChange !== void 0 ? vals.notifyPrecentChange : settings.notifyPrecentChange,
 				percentInt         : (vals.percentInt * 1000) || settings.percentInt,
 				percentValueChange : (vals.percentValueChange / 100) || settings.percentValueChange,
+				valueDivider       : vals.valueDivider || settings.valueDivider,
 				notifyMax          : vals.notifyMax !== void 0 ? vals.notifyMax : settings.notifyMax,
 				maxValue           : (vals.maxValue * 100000) || settings.maxValue,
 				notifyMin          : vals.notifyMin !== void 0 ? vals.notifyMin : settings.notifyMin,
@@ -561,6 +577,7 @@ var bitcoinLive = (function (){
 				notifyPrecentChange: settings.notifyPrecentChange,
 				percentInt         : settings.percentInt / 1000,
 				percentValueChange : settings.percentValueChange * 100,
+				valueDivider       : settings.valueDivider,
 				notifyMax          : settings.notifyMax,
 				maxValue           : settings.maxValue  / 100000,
 				notifyMin          : settings.notifyMin,
